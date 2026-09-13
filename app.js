@@ -403,21 +403,78 @@ async function handleOrderSubmit() {
     const orderModal = document.getElementById('orderModal');
     if (orderModal) orderModal.classList.remove('open');
 
+    let orderId = `MATI-${Math.floor(1000 + Math.random() * 9000)}`;
     if (data && data.success && data.order) {
-      showToast(`ধন্যবাদ ${name}! আপনার অর্ডার (${data.order.id}) সফলভাবে গৃহীত হয়েছে।`);
-    } else {
-      showToast(`ধন্যবাদ ${name}! আপনার অর্ডারটি সফলভাবে জমা হয়েছে।`);
+      orderId = data.order.id;
     }
+
+    const deliveryFee = location === 'outside' ? 120 : 60;
+    const totalPrice = (activeProduct ? activeProduct.price : 0) + deliveryFee;
+
+    const summaryData = {
+      id: orderId,
+      customerName: name,
+      customerPhone: cleanPhone,
+      productTitle: activeProduct ? activeProduct.title : 'Product',
+      totalPrice: totalPrice,
+      paymentMethod: payMethod
+    };
+
     const orderForm = document.getElementById('orderForm');
     if (orderForm) orderForm.reset();
+
+    openSuccessModal(summaryData);
   } catch (err) {
     console.error('Order submission fallback:', err);
     const orderModal = document.getElementById('orderModal');
     if (orderModal) orderModal.classList.remove('open');
-    showToast(`ধন্যবাদ ${name}! আপনার অর্ডারটি সফলভাবে জমা হয়েছে।`);
+    
+    const deliveryFee = location === 'outside' ? 120 : 60;
+    const totalPrice = (activeProduct ? activeProduct.price : 0) + deliveryFee;
+    const fallbackId = `MATI-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const summaryData = {
+      id: fallbackId,
+      customerName: name,
+      customerPhone: cleanPhone,
+      productTitle: activeProduct ? activeProduct.title : 'Product',
+      totalPrice: totalPrice,
+      paymentMethod: payMethod
+    };
+
     const orderForm = document.getElementById('orderForm');
     if (orderForm) orderForm.reset();
+
+    openSuccessModal(summaryData);
   }
+}
+
+function openSuccessModal(orderData) {
+  const modal = document.getElementById('successModal');
+  if (!modal) return;
+
+  const orderIdEl = document.getElementById('successOrderId');
+  const titleEl = document.getElementById('successProductTitle');
+  const payEl = document.getElementById('successPayMethod');
+  const priceEl = document.getElementById('successTotalPrice');
+  const waBtn = document.getElementById('successWhatsappBtn');
+
+  if (orderIdEl) orderIdEl.innerText = orderData.id;
+  if (titleEl) titleEl.innerText = orderData.productTitle;
+  if (payEl) payEl.innerText = orderData.paymentMethod === 'bKash' ? 'bKash / Nagad' : 'ক্যাশ অন ডেলিভারি';
+  if (priceEl) priceEl.innerText = `৳${(orderData.totalPrice || 0).toLocaleString('bn-BD')}`;
+
+  if (waBtn) {
+    const text = encodeURIComponent(`Hello Mati Store! I placed an order (${orderData.id}). Item: ${orderData.productTitle}, Name: ${orderData.customerName}, Phone: ${orderData.customerPhone}.`);
+    waBtn.href = `https://wa.me/8801871887014?text=${text}`;
+  }
+
+  modal.classList.add('open');
+}
+
+function closeSuccessModal() {
+  const modal = document.getElementById('successModal');
+  if (modal) modal.classList.remove('open');
 }
 
 /* Toast System */
