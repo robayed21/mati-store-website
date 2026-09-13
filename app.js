@@ -348,6 +348,7 @@ function openOrderModal(productId) {
 async function handleOrderSubmit() {
   const nameEl = document.getElementById('customerName');
   const phoneEl = document.getElementById('customerPhone');
+  const emailEl = document.getElementById('customerEmail');
   const addressEl = document.getElementById('customerAddress');
   const locationEl = document.getElementById('deliveryLocation');
   const payMethodEl = document.querySelector('input[name="payMethod"]:checked');
@@ -355,13 +356,41 @@ async function handleOrderSubmit() {
 
   const name = nameEl ? nameEl.value.trim() : '';
   const phoneRaw = phoneEl ? phoneEl.value.trim() : '';
+  const email = emailEl ? emailEl.value.trim() : '';
   const address = addressEl ? addressEl.value.trim() : '';
   const location = locationEl ? locationEl.value : 'inside';
   const payMethod = payMethodEl ? payMethodEl.value : 'COD';
   const trxId = trxIdEl ? trxIdEl.value.trim() : '';
 
-  if (!name || !phoneRaw || !address) {
-    showToast('অনুগ্রহ করে সকল সঠিক তথ্য পূরণ করুন!');
+  // Mandatory Field Checks: Name, Phone, Email, Address
+  if (!name) {
+    showToast('অনুগ্রহ করে আপনার নাম লিখুন!');
+    if (nameEl) nameEl.focus();
+    return;
+  }
+
+  if (!phoneRaw) {
+    showToast('অনুগ্রহ করে মোবাইল নম্বর লিখুন!');
+    if (phoneEl) phoneEl.focus();
+    return;
+  }
+
+  if (!email) {
+    showToast('অনুগ্রহ করে আপনার ইমেইল অ্যাড্রেস লিখুন!');
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showToast('অনুগ্রহ করে সঠিক ইমেইল আইডি দিন (যেমন: example@gmail.com)!');
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  if (!address) {
+    showToast('অনুগ্রহ করে আপনার পূর্ণাঙ্গ ঠিকানা লিখুন!');
+    if (addressEl) addressEl.focus();
     return;
   }
 
@@ -374,6 +403,13 @@ async function handleOrderSubmit() {
   const phoneRegex = /^01[3-9]\d{8}$/;
   if (!phoneRegex.test(cleanPhone)) {
     showToast('সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 01871887014)');
+    if (phoneEl) phoneEl.focus();
+    return;
+  }
+
+  if (payMethod === 'bKash' && !trxId) {
+    showToast('বিকাশ/নগদ এর ট্রানজেকশন আইডি (TrxID) দিন!');
+    if (trxIdEl) trxIdEl.focus();
     return;
   }
 
@@ -382,6 +418,7 @@ async function handleOrderSubmit() {
   const payload = {
     customerName: name,
     customerPhone: cleanPhone,
+    customerEmail: email,
     customerAddress: address,
     deliveryLocation: location,
     productId: activeProduct ? activeProduct.id : 'unknown',

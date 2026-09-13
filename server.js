@@ -274,10 +274,10 @@ app.get('/api/admin/export-csv', requireAdminAuth, (req, res) => {
 
 // API: Create new order (Public)
 app.post('/api/orders', (req, res) => {
-  const { customerName, customerPhone, customerAddress, deliveryLocation, productId, productTitle, productPrice, paymentMethod, trxId } = req.body;
+  const { customerName, customerPhone, customerEmail, customerAddress, deliveryLocation, productId, productTitle, productPrice, paymentMethod, trxId } = req.body;
 
-  if (!customerName || !customerPhone || !customerAddress || !productPrice) {
-    return res.status(400).json({ success: false, message: 'All fields are required' });
+  if (!customerName || !customerPhone || !customerEmail || !customerAddress || !productPrice) {
+    return res.status(400).json({ success: false, message: 'সকল তথ্যাদি সঠিকভাবে পূরণ করুন (নাম, ফোন, ইমেইল, ঠিকানা)' });
   }
 
   const orders = getOrders();
@@ -291,6 +291,7 @@ app.post('/api/orders', (req, res) => {
     id: orderId,
     customerName,
     customerPhone,
+    customerEmail: customerEmail || '',
     customerAddress,
     deliveryLocation: deliveryLocation || 'inside',
     deliveryFee,

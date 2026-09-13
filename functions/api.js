@@ -220,7 +220,7 @@ app.get('/.netlify/functions/api/orders', requireAdminAuth, (req, res) => {
 
 // API: Create Order (Public)
 app.post('/.netlify/functions/api/orders', (req, res) => {
-  const { customerName, customerPhone, customerAddress, deliveryLocation, productId, productTitle, productPrice, paymentMethod, trxId } = req.body;
+  const { customerName, customerPhone, customerEmail, customerAddress, deliveryLocation, productId, productTitle, productPrice, paymentMethod, trxId } = req.body;
   
   const nextIdNum = 1000 + memoryOrders.length + 1;
   const orderId = `MATI-${nextIdNum}`;
@@ -231,6 +231,7 @@ app.post('/.netlify/functions/api/orders', (req, res) => {
     id: orderId,
     customerName,
     customerPhone,
+    customerEmail: customerEmail || '',
     customerAddress,
     deliveryLocation: deliveryLocation || 'inside',
     deliveryFee,
