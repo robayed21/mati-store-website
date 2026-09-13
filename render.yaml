@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: mati-store-website
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: ADMIN_PASSCODE
+        value: admin123

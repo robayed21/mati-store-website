@@ -1,0 +1,129 @@
+const express = require('express');
+const serverless = require('serverless-http');
+
+const app = express();
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'admin123';
+const ADMIN_TOKEN = 'mati-store-secret-token-2026';
+
+app.use(express.json());
+
+// In-memory / temporary storage fallback for serverless lambda environment
+let memoryOrders = [
+  {
+    id: "MATI-1001",
+    customerName: "Md Siam",
+    customerPhone: "01871887014",
+    customerAddress: "Dhanmondi, Dhaka",
+    deliveryLocation: "inside",
+    deliveryFee: 60,
+    productId: "phone-stand-speaker",
+    productTitle: "Foldable Phone Stand with Bluetooth Speaker",
+    productPrice: 1090,
+    totalPrice: 1150,
+    status: "Confirmed",
+    createdAt: new Date().toISOString()
+  }
+];
+
+function requireAdminAuth(req, res, next) {
+  const token = req.headers['x-admin-token'] || req.headers['authorization'] || req.query.adminToken;
+  if (token === ADMIN_TOKEN || token === `Bearer ${ADMIN_TOKEN}`) {
+    return next();
+  }
+  return res.status(401).json({ success: false, message: 'Unauthorized. Admin login required.' });
+}
+
+// API: Admin Login
+app.post('/.netlify/functions/api/admin/login', (req, res) => {
+  const { passcode } = req.body;
+  if (passcode === ADMIN_PASSCODE) {
+    return res.json({ success: true, message: 'Login successful', token: ADMIN_TOKEN });
+  }
+  return res.status(401).json({ success: false, message: 'ভুল এডমিন পাসওয়ার্ড!' });
+});
+
+// API: Public Order Tracking
+app.get('/.netlify/functions/api/orders/track', (req, res) => {
+  const { query } = req.query;
+  if (!query) return res.status(400).json({ success: false, message: 'Query is required.' });
+
+  const q = query.trim().toLowerCase();
+  const found = memoryOrders.filter(o => o.id.toLowerCase() === q || o.customerPhone.includes(q));
+
+  if (!found.length) {
+    return res.status(404).json({ success: false, message: 'কোনো অর্ডার পাওয়া যায়নি!' });
+  }
+
+  const tracked = found.map(o => ({
+    id: o.id,
+    customerName: o.customerName,
+    productTitle: o.productTitle,
+    totalPrice: o.totalPrice,
+    status: o.status,
+    createdAt: o.createdAt
+  }));
+
+  res.json({ success: true, count: tracked.length, orders: tracked });
+});
+
+// API: Get Orders (Protected)
+app.get('/.netlify/functions/api/orders', requireAdminAuth, (req, res) => {
+  res.json({ success: true, count: memoryOrders.length, orders: memoryOrders });
+});
+
+// API: Create Order (Public)
+app.post('/.netlify/functions/api/orders', (req, res) => {
+  const { customerName, customerPhone, customerAddress, deliveryLocation, productId, productTitle, productPrice } = req.body;
+  
+  const nextIdNum = 1000 + memoryOrders.length + 1;
+  const orderId = `MATI-${nextIdNum}`;
+  const deliveryFee = deliveryLocation === 'outside' ? 120 : 60;
+  const totalPrice = Number(productPrice || 0) + deliveryFee;
+
+  const newOrder = {
+    id: orderId,
+    customerName,
+    customerPhone,
+    customerAddress,
+    deliveryLocation: deliveryLocation || 'inside',
+    deliveryFee,
+    productId: productId || 'custom',
+    productTitle: productTitle || 'Mati Store Gadget',
+    productPrice: Number(productPrice || 0),
+    totalPrice,
+    status: 'Pending',
+    createdAt: new Date().toISOString()
+  };
+
+  memoryOrders.unshift(newOrder);
+  res.status(201).json({ success: true, message: 'Order created', order: newOrder });
+});
+
+// API: Update Order Status (Protected)
+app.patch('/.netlify/functions/api/orders/:id', requireAdminAuth, (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const index = memoryOrders.findIndex(o => o.id === id);
+
+  if (index !== -1) {
+    memoryOrders[index].status = status;
+    return res.json({ success: true, order: memoryOrders[index] });
+  }
+  res.status(404).json({ success: false, message: 'Order not found' });
+});
+
+// API: Stats (Protected)
+app.get('/.netlify/functions/api/stats', requireAdminAuth, (req, res) => {
+  const totalOrders = memoryOrders.length;
+  const totalRevenue = memoryOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+  const pendingOrders = memoryOrders.filter(o => o.status === 'Pending').length;
+  const deliveredOrders = memoryOrders.filter(o => o.status === 'Delivered').length;
+
+  res.json({
+    success: true,
+    stats: { totalOrders, totalRevenue, pendingOrders, deliveredOrders }
+  });
+});
+
+module.exports.handler = serverless(app);
+
