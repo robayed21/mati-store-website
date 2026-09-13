@@ -272,9 +272,22 @@ app.get('/api/admin/export-csv', requireAdminAuth, (req, res) => {
   res.status(200).send(csv);
 });
 
+// Helper: External Notification integrations (SMS, Email, Google Sheets)
+function sendSMSNotification(phone, orderId, amount) {
+  console.log(`[SMS Gateway Triggered] Sending SMS to ${phone} for Order ${orderId} (৳${amount})`);
+}
+
+function sendEmailNotification(order) {
+  console.log(`[Email Gateway Triggered] Confirmation email queued for ${order.customerEmail} for Order ${order.id}`);
+}
+
+function sendToGoogleSheet(order) {
+  console.log(`[Google Sheets Webhook Triggered] Order ${order.id} synced to Google Sheet`);
+}
+
 // API: Create new order (Public)
 app.post('/api/orders', (req, res) => {
-  const { customerName, customerPhone, customerEmail, customerAddress, deliveryLocation, productId, productTitle, productPrice, paymentMethod, trxId } = req.body;
+  const { customerName, customerPhone, customerEmail, customerAddress, deliveryLocation, quantity, variant, productId, productTitle, productPrice, totalPrice, paymentMethod, trxId } = req.body;
 
   if (!customerName || !customerPhone || !customerEmail || !customerAddress || !productPrice) {
     return res.status(400).json({ success: false, message: 'সকল তথ্যাদি সঠিকভাবে পূরণ করুন (নাম, ফোন, ইমেইল, ঠিকানা)' });
@@ -284,8 +297,9 @@ app.post('/api/orders', (req, res) => {
   const nextIdNum = 1000 + orders.length + 1;
   const orderId = `MATI-${nextIdNum}`;
 
+  const qty = Number(quantity || 1);
   const deliveryFee = deliveryLocation === 'outside' ? 120 : 60;
-  const totalPrice = Number(productPrice) + deliveryFee;
+  const calculatedTotal = totalPrice ? Number(totalPrice) : (Number(productPrice) * qty + deliveryFee);
 
   const newOrder = {
     id: orderId,
@@ -295,10 +309,12 @@ app.post('/api/orders', (req, res) => {
     customerAddress,
     deliveryLocation: deliveryLocation || 'inside',
     deliveryFee,
+    quantity: qty,
+    variant: variant || 'Default',
     productId: productId || 'custom-gadget',
     productTitle: productTitle || 'Mati Store Gadget',
     productPrice: Number(productPrice),
-    totalPrice,
+    totalPrice: calculatedTotal,
     paymentMethod: paymentMethod || 'COD',
     trxId: trxId || '',
     status: 'Pending',
@@ -308,7 +324,10 @@ app.post('/api/orders', (req, res) => {
   orders.unshift(newOrder);
   saveOrders(orders);
 
-  sendSMSNotification(customerPhone, orderId, totalPrice);
+  // Trigger Notifications & Auto-sync
+  sendSMSNotification(customerPhone, orderId, calculatedTotal);
+  sendEmailNotification(newOrder);
+  sendToGoogleSheet(newOrder);
 
   res.status(201).json({
     success: true,

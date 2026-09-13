@@ -60,6 +60,8 @@ let currentOrderProduct = null;
 let sliderInterval = null;
 let isSliderPlaying = true;
 let currentSlideIndex = 0;
+let orderQuantity = 1;
+let selectedColor = 'ম্যাট ব্ল্যাক (Matte Black)';
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchLiveProducts();
@@ -70,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileDrawer();
   initTrackModal();
   initReviewModal();
+  initSearch();
+  initDealTimer();
 });
 
 async function fetchLiveProducts() {
@@ -306,18 +310,32 @@ function togglePayMethod() {
   }
 }
 
+function changeOrderQty(delta) {
+  orderQuantity = Math.max(1, orderQuantity + delta);
+  const qtyEl = document.getElementById('orderQtyVal');
+  if (qtyEl) qtyEl.innerText = orderQuantity;
+  updatePriceSummary();
+}
+
+function selectColor(el, colorName) {
+  document.querySelectorAll('.variant-chip').forEach(chip => chip.classList.remove('active'));
+  if (el) el.classList.add('active');
+  selectedColor = colorName;
+}
+
 function updatePriceSummary() {
   if (!currentOrderProduct) return;
   const locationSelect = document.getElementById('deliveryLocation');
   const deliveryFee = (locationSelect && locationSelect.value === 'outside') ? 120 : 60;
-  const subtotal = currentOrderProduct.price || 0;
+  const unitPrice = currentOrderProduct.price || 0;
+  const subtotal = unitPrice * orderQuantity;
   const total = subtotal + deliveryFee;
 
   const summarySubtotal = document.getElementById('summarySubtotal');
   const summaryDeliveryFee = document.getElementById('summaryDeliveryFee');
   const summaryTotal = document.getElementById('summaryTotal');
 
-  if (summarySubtotal) summarySubtotal.innerText = `৳${subtotal.toLocaleString('bn-BD')}`;
+  if (summarySubtotal) summarySubtotal.innerText = `৳${subtotal.toLocaleString('bn-BD')} (${orderQuantity}টি)`;
   if (summaryDeliveryFee) summaryDeliveryFee.innerText = `৳${deliveryFee.toLocaleString('bn-BD')}`;
   if (summaryTotal) summaryTotal.innerText = `৳${total.toLocaleString('bn-BD')}`;
 }
@@ -330,6 +348,10 @@ function openOrderModal(productId) {
   if (!product) return;
 
   currentOrderProduct = product;
+  orderQuantity = 1;
+  const qtyEl = document.getElementById('orderQtyVal');
+  if (qtyEl) qtyEl.innerText = orderQuantity;
+
   const modalOverlay = document.getElementById('orderModal');
   if (!modalOverlay) return;
 
@@ -343,6 +365,63 @@ function openOrderModal(productId) {
 
   updatePriceSummary();
   modalOverlay.classList.add('open');
+
+  trackFBEvent('ViewContent', { content_name: product.title, value: product.price, currency: 'BDT' });
+}
+
+function initSearch() {
+  const searchInput = document.getElementById('productSearchInput');
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    const container = document.getElementById('productGrid');
+    if (!container) return;
+
+    if (!query) {
+      renderProducts('all');
+      return;
+    }
+
+    const filtered = liveProducts.filter(p => 
+      p.title.toLowerCase().includes(query) ||
+      (p.titleBn && p.titleBn.toLowerCase().includes(query)) ||
+      p.category.toLowerCase().includes(query)
+    );
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--color-muted);">
+          <p class="bn" style="font-size: 1.1rem; font-weight: 600;">"${e.target.value}" নামে কোনো পণ্য পাওয়া যায়নি।</p>
+        </div>
+      `;
+      return;
+    }
+
+    renderProductCards(filtered, container);
+  });
+}
+
+function initDealTimer() {
+  let seconds = 4 * 3600 + 59 * 60 + 30;
+  const timerDisplay = document.getElementById('dealTimer');
+
+  setInterval(() => {
+    if (seconds <= 0) seconds = 5 * 3600;
+    seconds--;
+    const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+    const secs = String(seconds % 60).padStart(2, '0');
+    if (timerDisplay) timerDisplay.innerText = `${hrs}:${mins}:${secs}`;
+  }, 1000);
+}
+
+function trackFBEvent(eventName, params = {}) {
+  if (typeof window.fbq === 'function') {
+    window.fbq('track', eventName, params);
+  } else {
+    console.log(`[FB Pixel Event - ${eventName}]:`, params);
+  }
 }
 
 async function handleOrderSubmit() {
@@ -414,6 +493,9 @@ async function handleOrderSubmit() {
   }
 
   const activeProduct = currentOrderProduct || PRODUCTS[0];
+  const unitPrice = activeProduct ? activeProduct.price : 0;
+  const deliveryFee = location === 'outside' ? 120 : 60;
+  const totalPrice = unitPrice * orderQuantity + deliveryFee;
 
   const payload = {
     customerName: name,
@@ -421,12 +503,17 @@ async function handleOrderSubmit() {
     customerEmail: email,
     customerAddress: address,
     deliveryLocation: location,
+    quantity: orderQuantity,
+    variant: selectedColor,
     productId: activeProduct ? activeProduct.id : 'unknown',
     productTitle: activeProduct ? activeProduct.title : 'Product',
-    productPrice: activeProduct ? activeProduct.price : 0,
+    productPrice: unitPrice,
+    totalPrice: totalPrice,
     paymentMethod: payMethod,
     trxId: trxId
   };
+
+  trackFBEvent('Purchase', { content_name: payload.productTitle, value: totalPrice, currency: 'BDT' });
 
   try {
     const response = await fetch('/api/orders', {
