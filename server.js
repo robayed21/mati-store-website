@@ -36,6 +36,72 @@ function saveOrders(orders) {
   }
 }
 
+const REVIEWS_FILE = path.join(__dirname, 'data', 'reviews.json');
+
+// Helper: Reviews DB
+function getReviews() {
+  try {
+    if (!fs.existsSync(REVIEWS_FILE)) return [];
+    const raw = fs.readFileSync(REVIEWS_FILE, 'utf8');
+    return JSON.parse(raw || '[]');
+  } catch (err) {
+    console.error('Error reading reviews DB:', err);
+    return [];
+  }
+}
+
+function saveReviews(reviews) {
+  try {
+    const dir = path.dirname(REVIEWS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error writing reviews DB:', err);
+  }
+}
+
+// API: Public Reviews List
+app.get('/api/reviews', (req, res) => {
+  const reviews = getReviews();
+  res.json({ success: true, count: reviews.length, reviews });
+});
+
+// API: Submit Customer Review (Public)
+app.post('/api/reviews', (req, res) => {
+  const { name, location, rating, comment } = req.body;
+  if (!name || !comment) {
+    return res.status(400).json({ success: false, message: 'Name and review comment are required.' });
+  }
+
+  const reviews = getReviews();
+  const initial = name.trim().charAt(0);
+  const colors = [
+    { color: '#0284c7', bg: '#e0f2fe' },
+    { color: '#db2777', bg: '#fce7f3' },
+    { color: '#16a34a', bg: '#dcfce7' },
+    { color: '#d97706', bg: '#fef3c7' }
+  ];
+  const choice = colors[reviews.length % colors.length];
+
+  const newReview = {
+    id: `rev-${Date.now()}`,
+    name,
+    location: location || 'বাংলাদেশ',
+    rating: Number(rating || 5),
+    comment,
+    badge: 'Verified Customer',
+    avatarColor: choice.color,
+    avatarBg: choice.bg,
+    initial,
+    createdAt: new Date().toISOString()
+  };
+
+  reviews.unshift(newReview);
+  saveReviews(reviews);
+
+  res.status(201).json({ success: true, message: 'Review submitted successfully!', review: newReview });
+});
+
 // Helper: Products DB
 function getProducts() {
   try {

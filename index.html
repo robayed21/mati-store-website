@@ -63,7 +63,6 @@
       <a href="#offers" class="mobile-drawer-link">Special Offers</a>
       <a href="#benefits" class="mobile-drawer-link">Delivery Info</a>
       <a href="#contact" class="mobile-drawer-link">Contact Us</a>
-      <a href="admin.html" class="mobile-drawer-link" style="color: var(--color-brand);">Admin Portal</a>
     </div>
   </div>
 
@@ -269,47 +268,18 @@
     <!-- Customer Reviews Section -->
     <section class="section" style="background: #f8fafc; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
       <div class="container">
-        <div class="section-header" style="text-align: center; display: block; margin-bottom: 2rem;">
-          <h2 class="section-title bn">কাস্টমারদের মতামত ও রিভিউ ⭐️</h2>
-          <p class="section-desc bn">সারা বাংলাদেশের হাজারো সন্তুষ্ট কাস্টমারদের ভালোবাসা</p>
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+          <div>
+            <h2 class="section-title bn">কাস্টমারদের মতামত ও রিভিউ ⭐️</h2>
+            <p class="section-desc bn">সারা বাংলাদেশের হাজারো সন্তুষ্ট কাস্টমারদের ভালোবাসা</p>
+          </div>
+          <button onclick="openReviewModal()" class="btn btn-outline bn" style="color: var(--color-brand); border-color: var(--color-brand); background: white;">
+            ✍️ আপনার রিভিউ লিখুন
+          </button>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-          <div style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: #f59e0b; font-size: 1.1rem; margin-bottom: 0.5rem;">⭐⭐⭐⭐⭐</div>
-            <p class="bn" style="font-size: 0.9rem; color: var(--color-ink); line-height: 1.6;">"ফোন স্ট্যান্ড আর স্পিকার কম্বোটা দারুণ কাজ করছে! ২ দিনের মধ্যে ঢাকায় ডেলিভারি পেয়েছি। প্রোডাক্ট চেক করে টাকা দেওয়ার সুবিধাটা খুব ভালো লেগেছে।"</p>
-            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-              <div style="width: 36px; height: 36px; background: #e0f2fe; color: #0284c7; font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">র</div>
-              <div>
-                <div style="font-weight: 700; font-size: 0.85rem;">রাকিব হাসান</div>
-                <div style="font-size: 0.75rem; color: #64748b;" class="bn">মিরপুর, ঢাকা (Verified Buyer)</div>
-              </div>
-            </div>
-          </div>
-
-          <div style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: #f59e0b; font-size: 1.1rem; margin-bottom: 0.5rem;">⭐⭐⭐⭐⭐</div>
-            <p class="bn" style="font-size: 0.9rem; color: var(--color-ink); line-height: 1.6;">"স্কুর ড্রাইভার কিটটি খুবই প্রয়োজনীয় জিনিস। ঘরের ছোটখাটো কাজের জন্য একদম পারফেক্ট। সাশ্রয়ী দামে ভালো কোয়ালিটি।"</p>
-            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-              <div style="width: 36px; height: 36px; background: #fce7f3; color: #db2777; font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">স</div>
-              <div>
-                <div style="font-weight: 700; font-size: 0.85rem;">সাদিয়া আফরিন</div>
-                <div style="font-size: 0.75rem; color: #64748b;" class="bn">চট্টগ্রাম (Verified Buyer)</div>
-              </div>
-            </div>
-          </div>
-
-          <div style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: #f59e0b; font-size: 1.1rem; margin-bottom: 0.5rem;">⭐⭐⭐⭐⭐</div>
-            <p class="bn" style="font-size: 0.9rem; color: var(--color-ink); line-height: 1.6;">"3D LED ঘড়িটার নাইট ভিউ জাস্ট ওয়াও! রাতে ঘর অনেক সুন্দর দেখায়। ডেলিভারি সার্ভিসও ফাস্ট ছিল।"</p>
-            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-              <div style="width: 36px; height: 36px; background: #dcfce7; color: #16a34a; font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">ত</div>
-              <div>
-                <div style="font-weight: 700; font-size: 0.85rem;">তানভীর আহমেদ</div>
-                <div style="font-size: 0.75rem; color: #64748b;" class="bn">সিলেট (Verified Buyer)</div>
-              </div>
-            </div>
-          </div>
+        <div id="reviewsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+          <!-- Dynamically populated by app.js -->
         </div>
       </div>
     </section>
@@ -421,6 +391,43 @@
     </div>
   </div>
 
+  <!-- Customer Write Review Modal -->
+  <div class="modal-overlay" id="reviewModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title bn">আপনার মতামত ও রিভিউ দিন ✍️</h3>
+        <button class="close-modal-btn" id="closeReviewModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="reviewForm">
+          <div class="form-group">
+            <label class="form-label bn">আপনার নাম *</label>
+            <input type="text" id="revName" class="form-input bn" placeholder="যেমন: তানজিম আহমেদ" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label bn">আপনার এলাকা/জেলা</label>
+            <input type="text" id="revLocation" class="form-input bn" placeholder="যেমন: গুলশান, ঢাকা">
+          </div>
+          <div class="form-group">
+            <label class="form-label bn">রেটিং (Star Rating) *</label>
+            <select id="revRating" class="form-select">
+              <option value="5">⭐⭐⭐⭐⭐ (৫ স্টার - অসাধারণ)</option>
+              <option value="4">⭐⭐⭐⭐ (৪ স্টার - ভালো)</option>
+              <option value="3">⭐⭐⭐ (৩ স্টার - মাঝারি)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label bn">আপনার অভিজ্ঞতা বা মতামত *</label>
+            <textarea id="revComment" class="form-textarea bn" rows="3" placeholder="প্রোডাক্ট এবং ডেলিভারি নিয়ে আপনার অনুভূতি লিখুন..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary bn" style="width: 100%; font-size: 1rem; padding: 0.85rem;">
+            রিভিউ জমা দিন
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating WhatsApp Chat -->
   <a href="https://wa.me/8801871887014?text=Hello%20Mati%20Store!%20I%20want%20to%20know%20more%20about%20your%20gadgets." target="_blank" class="floating-whatsapp" title="WhatsApp Us">
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 256 256"><path d="M152.58,145.23l23,11.48A24,24,0,0,1,152,176a72.08,72.08,0,0,1-72-72A24,24,0,0,1,99.29,80.46l11.48,23L101,118a8,8,0,0,0-.73,7.51,56.47,56.47,0,0,0,30.15,30.15A8,8,0,0,0,138,155ZM232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-40,24a8,8,0,0,0-4.42-7.16l-32-16a8,8,0,0,0-8,.5l-14.69,9.8a40.55,40.55,0,0,1-16-16l9.8-14.69a8,8,0,0,0,.5-8l-16-32A8,8,0,0,0,104,64a40,40,0,0,0-40,40,88.1,88.1,0,0,0,88,88A40,40,0,0,0,192,152Z"></path></svg>
@@ -441,7 +448,6 @@
             <li><a href="#products">All Products</a></li>
             <li><a href="#offers">Special Offers</a></li>
             <li><a href="#benefits">Delivery Policy</a></li>
-            <li><a href="admin.html" style="color: var(--color-brand); font-weight: 700;">Admin Dashboard</a></li>
           </ul>
         </div>
 
@@ -471,6 +477,6 @@
     </div>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

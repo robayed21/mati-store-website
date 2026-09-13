@@ -62,6 +62,46 @@ let memoryProducts = [
   }
 ];
 
+let memoryReviews = [
+  {
+    id: "rev-1",
+    name: "রাকিব হাসান",
+    location: "মিরপুর, ঢাকা",
+    rating: 5,
+    comment: "ফোন স্ট্যান্ড আর স্পিকার কম্বোটা দারুণ কাজ করছে! ২ দিনের মধ্যে ঢাকায় ডেলিভারি পেয়েছি। প্রোডাক্ট চেক করে টাকা দেওয়ার সুবিধাটা খুব ভালো লেগেছে।",
+    badge: "Verified Buyer",
+    avatarColor: "#0284c7",
+    avatarBg: "#e0f2fe",
+    initial: "র",
+    createdAt: new Date().toISOString()
+  }
+];
+
+// API: Public Reviews List
+app.get('/.netlify/functions/api/reviews', (req, res) => {
+  res.json({ success: true, count: memoryReviews.length, reviews: memoryReviews });
+});
+
+// API: Submit Review
+app.post('/.netlify/functions/api/reviews', (req, res) => {
+  const { name, location, rating, comment } = req.body;
+  const initial = (name || 'ক').trim().charAt(0);
+  const newRev = {
+    id: `rev-${Date.now()}`,
+    name,
+    location: location || 'বাংলাদেশ',
+    rating: Number(rating || 5),
+    comment,
+    badge: 'Verified Customer',
+    avatarColor: '#0284c7',
+    avatarBg: '#e0f2fe',
+    initial,
+    createdAt: new Date().toISOString()
+  };
+  memoryReviews.unshift(newRev);
+  res.status(201).json({ success: true, message: 'Review added', review: newRev });
+});
+
 let memoryOrders = [
   {
     id: "MATI-1001",

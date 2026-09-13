@@ -56,14 +56,20 @@ const PRODUCTS = [
 ];
 
 let liveProducts = [...PRODUCTS];
+let currentOrderProduct = null;
+let sliderInterval = null;
+let isSliderPlaying = true;
+let currentSlideIndex = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchLiveProducts();
+  fetchReviews();
   initHeroSlider();
   initTabs();
   initModal();
   initMobileDrawer();
   initTrackModal();
+  initReviewModal();
 });
 
 async function fetchLiveProducts() {
@@ -300,49 +306,87 @@ function togglePayMethod() {
   }
 }
 
+function updatePriceSummary() {
+  if (!currentOrderProduct) return;
+  const locationSelect = document.getElementById('deliveryLocation');
+  const deliveryFee = (locationSelect && locationSelect.value === 'outside') ? 120 : 60;
+  const subtotal = currentOrderProduct.price || 0;
+  const total = subtotal + deliveryFee;
+
+  const summarySubtotal = document.getElementById('summarySubtotal');
+  const summaryDeliveryFee = document.getElementById('summaryDeliveryFee');
+  const summaryTotal = document.getElementById('summaryTotal');
+
+  if (summarySubtotal) summarySubtotal.innerText = `৳${subtotal.toLocaleString('bn-BD')}`;
+  if (summaryDeliveryFee) summaryDeliveryFee.innerText = `৳${deliveryFee.toLocaleString('bn-BD')}`;
+  if (summaryTotal) summaryTotal.innerText = `৳${total.toLocaleString('bn-BD')}`;
+}
+
 function openOrderModal(productId) {
-  const product = liveProducts.find(p => p.id === productId) || PRODUCTS.find(p => p.id === productId);
+  let product = liveProducts.find(p => p.id === productId) || PRODUCTS.find(p => p.id === productId);
+  if (!product && PRODUCTS.length > 0) {
+    product = PRODUCTS[0];
+  }
   if (!product) return;
 
   currentOrderProduct = product;
   const modalOverlay = document.getElementById('orderModal');
+  if (!modalOverlay) return;
 
-  document.getElementById('modalProductImg').src = product.image;
-  document.getElementById('modalProductName').innerText = product.title;
-  document.getElementById('modalProductPrice').innerText = `৳${product.price.toLocaleString('bn-BD')}`;
+  const imgEl = document.getElementById('modalProductImg');
+  const nameEl = document.getElementById('modalProductName');
+  const priceEl = document.getElementById('modalProductPrice');
+
+  if (imgEl) imgEl.src = product.image;
+  if (nameEl) nameEl.innerText = product.title;
+  if (priceEl) priceEl.innerText = `৳${(product.price || 0).toLocaleString('bn-BD')}`;
 
   updatePriceSummary();
   modalOverlay.classList.add('open');
 }
 
 async function handleOrderSubmit() {
-  const name = document.getElementById('customerName').value.trim();
-  const phone = document.getElementById('customerPhone').value.trim();
-  const address = document.getElementById('customerAddress').value.trim();
-  const location = document.getElementById('deliveryLocation').value;
-  const payMethod = document.querySelector('input[name="payMethod"]:checked').value;
-  const trxId = document.getElementById('trxIdInput') ? document.getElementById('trxIdInput').value.trim() : '';
+  const nameEl = document.getElementById('customerName');
+  const phoneEl = document.getElementById('customerPhone');
+  const addressEl = document.getElementById('customerAddress');
+  const locationEl = document.getElementById('deliveryLocation');
+  const payMethodEl = document.querySelector('input[name="payMethod"]:checked');
+  const trxIdEl = document.getElementById('trxIdInput');
 
-  if (!name || !phone || !address) {
+  const name = nameEl ? nameEl.value.trim() : '';
+  const phoneRaw = phoneEl ? phoneEl.value.trim() : '';
+  const address = addressEl ? addressEl.value.trim() : '';
+  const location = locationEl ? locationEl.value : 'inside';
+  const payMethod = payMethodEl ? payMethodEl.value : 'COD';
+  const trxId = trxIdEl ? trxIdEl.value.trim() : '';
+
+  if (!name || !phoneRaw || !address) {
     showToast('অনুগ্রহ করে সকল সঠিক তথ্য পূরণ করুন!');
     return;
   }
 
-  // BD phone validation check
+  // BD phone validation check & auto-cleaning
+  let cleanPhone = phoneRaw.replace(/[\s\-\+\(\)]/g, '');
+  if (cleanPhone.startsWith('880')) {
+    cleanPhone = '0' + cleanPhone.slice(3);
+  }
+
   const phoneRegex = /^01[3-9]\d{8}$/;
-  if (!phoneRegex.test(phone)) {
+  if (!phoneRegex.test(cleanPhone)) {
     showToast('সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 01871887014)');
     return;
   }
 
+  const activeProduct = currentOrderProduct || PRODUCTS[0];
+
   const payload = {
     customerName: name,
-    customerPhone: phone,
+    customerPhone: cleanPhone,
     customerAddress: address,
     deliveryLocation: location,
-    productId: currentOrderProduct.id,
-    productTitle: currentOrderProduct.title,
-    productPrice: currentOrderProduct.price,
+    productId: activeProduct ? activeProduct.id : 'unknown',
+    productTitle: activeProduct ? activeProduct.title : 'Product',
+    productPrice: activeProduct ? activeProduct.price : 0,
     paymentMethod: payMethod,
     trxId: trxId
   };
@@ -356,20 +400,23 @@ async function handleOrderSubmit() {
 
     const data = await response.json();
 
-    if (data.success) {
-      document.getElementById('orderModal').classList.remove('open');
+    const orderModal = document.getElementById('orderModal');
+    if (orderModal) orderModal.classList.remove('open');
+
+    if (data && data.success && data.order) {
       showToast(`ধন্যবাদ ${name}! আপনার অর্ডার (${data.order.id}) সফলভাবে গৃহীত হয়েছে।`);
-      document.getElementById('orderForm').reset();
     } else {
-      document.getElementById('orderModal').classList.remove('open');
       showToast(`ধন্যবাদ ${name}! আপনার অর্ডারটি সফলভাবে জমা হয়েছে।`);
-      document.getElementById('orderForm').reset();
     }
+    const orderForm = document.getElementById('orderForm');
+    if (orderForm) orderForm.reset();
   } catch (err) {
     console.error('Order submission fallback:', err);
-    document.getElementById('orderModal').classList.remove('open');
+    const orderModal = document.getElementById('orderModal');
+    if (orderModal) orderModal.classList.remove('open');
     showToast(`ধন্যবাদ ${name}! আপনার অর্ডারটি সফলভাবে জমা হয়েছে।`);
-    document.getElementById('orderForm').reset();
+    const orderForm = document.getElementById('orderForm');
+    if (orderForm) orderForm.reset();
   }
 }
 
@@ -470,5 +517,96 @@ async function handleTrackSubmit() {
   } catch (err) {
     console.error('Tracking fetch error:', err);
     container.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: #ef4444;" class="bn">অর্ডার তথ্য লোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।</div>`;
+  }
+}
+
+/* Reviews System */
+async function fetchReviews() {
+  try {
+    const res = await fetch('/api/reviews');
+    const data = await res.json();
+    if (data.success && data.reviews.length) {
+      renderReviews(data.reviews);
+    }
+  } catch (err) {
+    console.error('Error fetching reviews:', err);
+  }
+}
+
+function renderReviews(reviews) {
+  const container = document.getElementById('reviewsGrid');
+  if (!container) return;
+
+  container.innerHTML = reviews.map(rev => `
+    <div style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+      <div style="color: #f59e0b; font-size: 1.1rem; margin-bottom: 0.5rem;">${'⭐'.repeat(rev.rating || 5)}</div>
+      <p class="bn" style="font-size: 0.9rem; color: var(--color-ink); line-height: 1.6;">"${rev.comment}"</p>
+      <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+        <div style="width: 36px; height: 36px; background: ${rev.avatarBg || '#e0f2fe'}; color: ${rev.avatarColor || '#0284c7'}; font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+          ${rev.initial || rev.name.charAt(0)}
+        </div>
+        <div>
+          <div style="font-weight: 700; font-size: 0.85rem;">${rev.name}</div>
+          <div style="font-size: 0.75rem; color: #64748b;" class="bn">${rev.location || 'বাংলাদেশ'} (${rev.badge || 'Verified Buyer'})</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function initReviewModal() {
+  const modal = document.getElementById('reviewModal');
+  const closeBtn = document.getElementById('closeReviewModal');
+  const form = document.getElementById('reviewForm');
+
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleReviewSubmit();
+    });
+  }
+}
+
+function openReviewModal() {
+  const modal = document.getElementById('reviewModal');
+  if (modal) {
+    modal.classList.add('open');
+  }
+}
+
+async function handleReviewSubmit() {
+  const name = document.getElementById('revName').value.trim();
+  const location = document.getElementById('revLocation').value.trim();
+  const rating = document.getElementById('revRating').value;
+  const comment = document.getElementById('revComment').value.trim();
+
+  if (!name || !comment) {
+    showToast('আপনার নাম ও মন্তব্য সঠিকভাবে লিখুন!');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, location, rating, comment })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('reviewModal').classList.remove('open');
+      document.getElementById('reviewForm').reset();
+      showToast('ধন্যবাদ! আপনার মূল্যবান রিভিউটি সফলভাবে প্রকাশিত হয়েছে।');
+      fetchReviews();
+    }
+  } catch (err) {
+    console.error('Review submit error:', err);
+    showToast('রিভিউ পোস্ট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন!');
   }
 }
