@@ -7,7 +7,61 @@ const ADMIN_TOKEN = 'mati-store-secret-token-2026';
 
 app.use(express.json());
 
-// In-memory / temporary storage fallback for serverless lambda environment
+let memoryProducts = [
+  {
+    id: "phone-stand-speaker",
+    title: "Foldable Phone Stand with Bluetooth Speaker",
+    titleBn: "ফোন স্ট্যান্ড আর ব্লুটুথ স্পিকার একসাথে",
+    category: "phone",
+    price: 1090,
+    oldPrice: 1190,
+    discount: "৮% ছাড়",
+    savings: 100,
+    tag: "Popular",
+    image: "assets/phone_stand_speaker.jpg",
+    tab: "available"
+  },
+  {
+    id: "screwdriver-kit",
+    title: "Cordless Electric Screwdriver Kit",
+    titleBn: "ছোটখাটো কাজের জন্য স্ক্রু ড্রাইভার কিট",
+    category: "home",
+    price: 1690,
+    oldPrice: 1790,
+    discount: "৬% ছাড়",
+    savings: 100,
+    tag: "New",
+    image: "assets/screwdriver_kit.jpg",
+    tab: "new"
+  },
+  {
+    id: "led-clock",
+    title: "3D LED Digital Clock",
+    titleBn: "এক নজরে সময় দেখুন",
+    category: "home",
+    price: 890,
+    oldPrice: 990,
+    discount: "১০% ছাড়",
+    savings: 100,
+    tag: "Offer",
+    image: "assets/led_digital_clock.jpg",
+    tab: "offer"
+  },
+  {
+    id: "wireless-mic",
+    title: "SX21 Dual Wireless Lavalier Microphone",
+    titleBn: "ক্রিস্টাল ক্লিয়ার সাউন্ড রেকর্ডার",
+    category: "audio",
+    price: 1890,
+    oldPrice: 1990,
+    discount: "৫% ছাড়",
+    savings: 100,
+    tag: "Top Rated",
+    image: "assets/wireless_mic.jpg",
+    tab: "available"
+  }
+];
+
 let memoryOrders = [
   {
     id: "MATI-1001",
@@ -20,6 +74,7 @@ let memoryOrders = [
     productTitle: "Foldable Phone Stand with Bluetooth Speaker",
     productPrice: 1090,
     totalPrice: 1150,
+    paymentMethod: "COD",
     status: "Confirmed",
     createdAt: new Date().toISOString()
   }
@@ -42,6 +97,42 @@ app.post('/.netlify/functions/api/admin/login', (req, res) => {
   return res.status(401).json({ success: false, message: 'ভুল এডমিন পাসওয়ার্ড!' });
 });
 
+// API: Public Products List
+app.get('/.netlify/functions/api/products', (req, res) => {
+  res.json({ success: true, count: memoryProducts.length, products: memoryProducts });
+});
+
+// API: Add Product
+app.post('/.netlify/functions/api/products', requireAdminAuth, (req, res) => {
+  const { title, titleBn, category, price, oldPrice, discount, tag, image, tab } = req.body;
+  const slug = (title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const id = `${slug}-${Date.now().toString().slice(-4)}`;
+
+  const newP = {
+    id,
+    title,
+    titleBn: titleBn || title,
+    category: category || 'phone',
+    price: Number(price || 1000),
+    oldPrice: Number(oldPrice || 1200),
+    discount: discount || '',
+    savings: 200,
+    tag: tag || 'New',
+    image: image || 'assets/phone_stand_speaker.jpg',
+    tab: tab || 'available'
+  };
+
+  memoryProducts.unshift(newP);
+  res.status(201).json({ success: true, message: 'Product added', product: newP });
+});
+
+// API: Delete Product
+app.delete('/.netlify/functions/api/products/:id', requireAdminAuth, (req, res) => {
+  const { id } = req.params;
+  memoryProducts = memoryProducts.filter(p => p.id !== id);
+  res.json({ success: true, message: 'Product deleted' });
+});
+
 // API: Public Order Tracking
 app.get('/.netlify/functions/api/orders/track', (req, res) => {
   const { query } = req.query;
@@ -59,11 +150,27 @@ app.get('/.netlify/functions/api/orders/track', (req, res) => {
     customerName: o.customerName,
     productTitle: o.productTitle,
     totalPrice: o.totalPrice,
+    paymentMethod: o.paymentMethod || 'COD',
     status: o.status,
     createdAt: o.createdAt
   }));
 
   res.json({ success: true, count: tracked.length, orders: tracked });
+});
+
+// API: Export CSV
+app.get('/.netlify/functions/api/admin/export-csv', requireAdminAuth, (req, res) => {
+  let csv = 'Tracking ID,Customer Name,Customer Phone,Address,Delivery Area,Product Title,Product Price,Delivery Fee,Total Price,Payment Method,TrxID,Status,Order Date\n';
+
+  memoryOrders.forEach(o => {
+    const cleanAddress = `"${(o.customerAddress || '').replace(/"/g, '""')}"`;
+    const cleanTitle = `"${(o.productTitle || '').replace(/"/g, '""')}"`;
+    csv += `${o.id},"${o.customerName}",${o.customerPhone},${cleanAddress},${o.deliveryLocation || 'inside'},${cleanTitle},${o.productPrice},${o.deliveryFee},${o.totalPrice},${o.paymentMethod || 'COD'},"${o.trxId || ''}",${o.status},${o.createdAt}\n`;
+  });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="mati_store_orders.csv"');
+  res.status(200).send(csv);
 });
 
 // API: Get Orders (Protected)
@@ -73,7 +180,7 @@ app.get('/.netlify/functions/api/orders', requireAdminAuth, (req, res) => {
 
 // API: Create Order (Public)
 app.post('/.netlify/functions/api/orders', (req, res) => {
-  const { customerName, customerPhone, customerAddress, deliveryLocation, productId, productTitle, productPrice } = req.body;
+  const { customerName, customerPhone, customerAddress, deliveryLocation, productId, productTitle, productPrice, paymentMethod, trxId } = req.body;
   
   const nextIdNum = 1000 + memoryOrders.length + 1;
   const orderId = `MATI-${nextIdNum}`;
@@ -91,6 +198,8 @@ app.post('/.netlify/functions/api/orders', (req, res) => {
     productTitle: productTitle || 'Mati Store Gadget',
     productPrice: Number(productPrice || 0),
     totalPrice,
+    paymentMethod: paymentMethod || 'COD',
+    trxId: trxId || '',
     status: 'Pending',
     createdAt: new Date().toISOString()
   };
@@ -126,4 +235,5 @@ app.get('/.netlify/functions/api/stats', requireAdminAuth, (req, res) => {
 });
 
 module.exports.handler = serverless(app);
+
 

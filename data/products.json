@@ -1,0 +1,54 @@
+[
+  {
+    "id": "phone-stand-speaker",
+    "title": "Foldable Phone Stand with Bluetooth Speaker",
+    "titleBn": "ফোন স্ট্যান্ড আর ব্লুটুথ স্পিকার একসাথে",
+    "category": "phone",
+    "price": 1090,
+    "oldPrice": 1190,
+    "discount": "৮% ছাড়",
+    "savings": 100,
+    "tag": "Popular",
+    "image": "assets/phone_stand_speaker.jpg",
+    "tab": "available"
+  },
+  {
+    "id": "screwdriver-kit",
+    "title": "Cordless Electric Screwdriver Kit",
+    "titleBn": "ছোটখাটো কাজের জন্য স্ক্রু ড্রাইভার কিট",
+    "category": "home",
+    "price": 1690,
+    "oldPrice": 1790,
+    "discount": "৬% ছাড়",
+    "savings": 100,
+    "tag": "New",
+    "image": "assets/screwdriver_kit.jpg",
+    "tab": "new"
+  },
+  {
+    "id": "led-clock",
+    "title": "3D LED Digital Clock",
+    "titleBn": "এক নজরে সময় দেখুন",
+    "category": "home",
+    "price": 890,
+    "oldPrice": 990,
+    "discount": "১০% ছাড়",
+    "savings": 100,
+    "tag": "Offer",
+    "image": "assets/led_digital_clock.jpg",
+    "tab": "offer"
+  },
+  {
+    "id": "wireless-mic",
+    "title": "SX21 Dual Wireless Lavalier Microphone",
+    "titleBn": "ক্রিস্টাল ক্লিয়ার সাউন্ড রেকর্ডার",
+    "category": "audio",
+    "price": 1890,
+    "oldPrice": 1990,
+    "discount": "৫% ছাড়",
+    "savings": 100,
+    "tag": "Top Rated",
+    "image": "assets/wireless_mic.jpg",
+    "tab": "available"
+  }
+]

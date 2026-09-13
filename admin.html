@@ -196,9 +196,9 @@
       </div>
     </div>
 
-    <!-- Controls & Filters -->
+    <!-- Controls & Actions Bar -->
     <div class="controls-bar">
-      <div style="display: flex; gap: 0.5rem;" id="statusFilters">
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;" id="statusFilters">
         <button class="tab-btn active" data-status="all">All Orders</button>
         <button class="tab-btn" data-status="Pending">Pending</button>
         <button class="tab-btn" data-status="Confirmed">Confirmed</button>
@@ -206,13 +206,19 @@
         <button class="tab-btn" data-status="Cancelled">Cancelled</button>
       </div>
 
-      <div style="display: flex; gap: 0.5rem; flex: 1; max-width: 360px;">
-        <input type="text" id="adminSearchInput" class="form-input" placeholder="Search order ID, name, phone...">
+      <div style="display: flex; gap: 0.5rem; flex: 1; max-width: 500px; justify-content: flex-end; flex-wrap: wrap;">
+        <input type="text" id="adminSearchInput" class="form-input" placeholder="Search order ID, name, phone..." style="max-width: 200px;">
+        <button id="exportCsvBtn" class="btn btn-outline bn" style="color: #0d9488; border-color: #99f6e4; background: #f0fdf4;">
+          📥 Export CSV (Courier)
+        </button>
+        <button id="openAddProductBtn" class="btn btn-primary bn" style="padding: 0.5rem 1rem;">
+          ➕ Add Product
+        </button>
       </div>
     </div>
 
     <!-- Orders Table -->
-    <div class="admin-table-card">
+    <div class="admin-table-card" style="margin-bottom: 3rem;">
       <table class="admin-table">
         <thead>
           <tr>
@@ -221,6 +227,7 @@
             <th>Address</th>
             <th>Product Title</th>
             <th>Total Price</th>
+            <th>Payment</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
@@ -230,7 +237,82 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Products Inventory Section -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a;" class="bn">🛍️ প্রোডাক্ট ইনভেন্টরি (Live Catalog)</h3>
+    </div>
+    <div class="admin-table-card">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Image</th>
+            <th>Product Title</th>
+            <th>Price</th>
+            <th>Category</th>
+            <th>Tag</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminProductsTableBody">
+          <!-- Populated by admin JS -->
+        </tbody>
+      </table>
+    </div>
   </main>
+
+  <!-- Add Product Modal -->
+  <div class="modal-overlay" id="addProductModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title bn">নতুন প্রোডাক্ট যুক্ত করুন</h3>
+        <button class="close-modal-btn" id="closeAddProductModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addProductForm">
+          <div class="form-group">
+            <label class="form-label bn">ইংরেজি নাম *</label>
+            <input type="text" id="pTitle" class="form-input" placeholder="e.g. Wireless Gaming Earbuds" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label bn">বাংলা নাম *</label>
+            <input type="text" id="pTitleBn" class="form-input bn" placeholder="যেমন: ওয়ারলেস গেইমিং ইয়ারবাড" required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label bn">মূল দাম (৳) *</label>
+              <input type="number" id="pPrice" class="form-input" placeholder="1200" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label bn">আগের দাম (৳)</label>
+              <input type="number" id="pOldPrice" class="form-input" placeholder="1500">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label bn">ক্যাটাগরি *</label>
+              <select id="pCategory" class="form-select">
+                <option value="phone">Phone Accessories</option>
+                <option value="audio">Audio & Mics</option>
+                <option value="home">Home & Utility</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label bn">ট্যাগ (Badge)</label>
+              <input type="text" id="pTag" class="form-input" placeholder="New / Hot / Offer">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label bn">ছবি লিংক (Image URL)</label>
+            <input type="text" id="pImage" class="form-input" placeholder="assets/phone_stand_speaker.jpg">
+          </div>
+          <button type="submit" class="btn btn-primary bn" style="width: 100%; font-size: 1rem; padding: 0.85rem;">
+            প্রোডাক্ট সেভ করুন
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script>
     let currentFilter = 'all';
@@ -249,6 +331,24 @@
         adminToken = '';
         document.getElementById('adminLoginOverlay').style.display = 'flex';
         document.getElementById('adminLogoutBtn').style.display = 'none';
+      });
+
+      document.getElementById('exportCsvBtn').addEventListener('click', () => {
+        if (!adminToken) return promptAuth();
+        window.open(`/api/admin/export-csv?adminToken=${encodeURIComponent(adminToken)}`, '_blank');
+      });
+
+      // Product Modal Event Listeners
+      const addModal = document.getElementById('addProductModal');
+      document.getElementById('openAddProductBtn').addEventListener('click', () => {
+        addModal.classList.add('open');
+      });
+      document.getElementById('closeAddProductModal').addEventListener('click', () => {
+        addModal.classList.remove('open');
+      });
+      document.getElementById('addProductForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleAddProductSubmit();
       });
 
       document.getElementById('adminSearchInput').addEventListener('input', (e) => {
@@ -285,6 +385,7 @@
           document.getElementById('adminLogoutBtn').style.display = 'inline-block';
           loadStats();
           loadOrders();
+          loadProducts();
         } else {
           errorMsg.innerText = data.message || 'ভুল পাসওয়ার্ড!';
           errorMsg.style.display = 'block';
@@ -302,6 +403,7 @@
         document.getElementById('adminLogoutBtn').style.display = 'inline-block';
         loadStats();
         loadOrders();
+        loadProducts();
       } else {
         document.getElementById('adminLoginOverlay').style.display = 'flex';
         document.getElementById('adminLogoutBtn').style.display = 'none';
@@ -344,6 +446,18 @@
       }
     }
 
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/products');
+        const data = await res.json();
+        if (data.success) {
+          renderProductsTable(data.products);
+        }
+      } catch (err) {
+        console.error('Error loading products:', err);
+      }
+    }
+
     function promptAuth() {
       sessionStorage.removeItem('adminToken');
       adminToken = '';
@@ -354,7 +468,7 @@
     function renderTable(orders) {
       const tbody = document.getElementById('adminTableBody');
       if (!orders || !orders.length) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">No orders found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">No orders found.</td></tr>`;
         return;
       }
 
@@ -384,6 +498,12 @@
             <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 400;">(Inc. ৳${order.deliveryFee} shipping)</div>
           </td>
           <td>
+            <span style="font-weight: 700; font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: ${order.paymentMethod === 'bKash' ? '#fce7f3' : order.paymentMethod === 'Nagad' ? '#ffedd5' : '#f1f5f9'}; color: ${order.paymentMethod === 'bKash' ? '#be185d' : order.paymentMethod === 'Nagad' ? '#c2410c' : '#475569'};">
+              ${order.paymentMethod || 'COD'}
+            </span>
+            ${order.trxId ? `<div style="font-size: 0.7rem; color: #64748b; font-family: monospace;">Trx: ${order.trxId}</div>` : ''}
+          </td>
+          <td>
             <select class="status-select ${order.status}" onchange="updateStatus('${order.id}', this.value)">
               <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
               <option value="Confirmed" ${order.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
@@ -398,6 +518,79 @@
           </td>
         </tr>
       `).join('');
+    }
+
+    function renderProductsTable(products) {
+      const tbody = document.getElementById('adminProductsTableBody');
+      if (!products || !products.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #94a3b8;">No products found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = products.map(p => `
+        <tr>
+          <td><img src="${p.image}" alt="${p.title}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 8px;"></td>
+          <td>
+            <div style="font-weight: 700; font-size: 0.9rem;">${p.title}</div>
+            <div style="font-size: 0.8rem; color: #64748b;">${p.titleBn || ''}</div>
+          </td>
+          <td style="font-weight: 800; color: #0d9488;">৳${p.price.toLocaleString('bn-BD')}</td>
+          <td><span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 700; color: #64748b;">${p.category}</span></td>
+          <td><span style="font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.5rem; border-radius: 4px;">${p.tag || 'Standard'}</span></td>
+          <td>
+            <button onclick="deleteProduct('${p.id}')" class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; color: #ef4444; border-color: #fca5a5;">
+              🗑️ Delete
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function handleAddProductSubmit() {
+      const title = document.getElementById('pTitle').value.trim();
+      const titleBn = document.getElementById('pTitleBn').value.trim();
+      const price = document.getElementById('pPrice').value;
+      const oldPrice = document.getElementById('pOldPrice').value;
+      const category = document.getElementById('pCategory').value;
+      const tag = document.getElementById('pTag').value.trim();
+      const image = document.getElementById('pImage').value.trim();
+
+      try {
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-token': adminToken
+          },
+          body: JSON.stringify({ title, titleBn, price, oldPrice, category, tag, image })
+        });
+        if (res.status === 401) return promptAuth();
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('addProductModal').classList.remove('open');
+          document.getElementById('addProductForm').reset();
+          loadProducts();
+        }
+      } catch (err) {
+        console.error('Error adding product:', err);
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('Are you sure you want to delete this product?')) return;
+      try {
+        const res = await fetch(`/api/products/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-admin-token': adminToken }
+        });
+        if (res.status === 401) return promptAuth();
+        const data = await res.json();
+        if (data.success) {
+          loadProducts();
+        }
+      } catch (err) {
+        console.error('Error deleting product:', err);
+      }
     }
 
     async function updateStatus(id, newStatus) {

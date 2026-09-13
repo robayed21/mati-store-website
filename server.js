@@ -6,6 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const DB_FILE = path.join(__dirname, 'data', 'orders.json');
+const PRODUCTS_FILE = path.join(__dirname, 'data', 'products.json');
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'admin123';
 const ADMIN_TOKEN = 'mati-store-secret-token-2026';
 
@@ -13,12 +14,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Helper to read orders DB
+// Helper: Orders DB
 function getOrders() {
   try {
-    if (!fs.existsSync(DB_FILE)) {
-      return [];
-    }
+    if (!fs.existsSync(DB_FILE)) return [];
     const raw = fs.readFileSync(DB_FILE, 'utf8');
     return JSON.parse(raw || '[]');
   } catch (err) {
@@ -27,16 +26,44 @@ function getOrders() {
   }
 }
 
-// Helper to save orders DB
 function saveOrders(orders) {
   try {
     const dir = path.dirname(DB_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(DB_FILE, JSON.stringify(orders, null, 2), 'utf8');
   } catch (err) {
     console.error('Error writing orders DB:', err);
+  }
+}
+
+// Helper: Products DB
+function getProducts() {
+  try {
+    if (!fs.existsSync(PRODUCTS_FILE)) return [];
+    const raw = fs.readFileSync(PRODUCTS_FILE, 'utf8');
+    return JSON.parse(raw || '[]');
+  } catch (err) {
+    console.error('Error reading products DB:', err);
+    return [];
+  }
+}
+
+function saveProducts(products) {
+  try {
+    const dir = path.dirname(PRODUCTS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error writing products DB:', err);
+  }
+}
+
+// Helper: SMS Notification Hook
+function sendSMSNotification(phone, orderId, totalPrice) {
+  console.log(`[SMS HOOK] 📲 Sending SMS to ${phone}: "ধন্যবাদ! আপনার মতি স্টোরের অর্ডার (ID: ${orderId}, ৳${totalPrice}) গ্রহণ করা হয়েছে।"`);
+  // If GREENWEB_API_KEY environment variable is present, trigger HTTP request to SMS gateway
+  if (process.env.GREENWEB_API_KEY) {
+    // Greenweb / BdSMS integration hook
   }
 }
 
@@ -53,16 +80,60 @@ function requireAdminAuth(req, res, next) {
 app.post('/api/admin/login', (req, res) => {
   const { passcode } = req.body;
   if (passcode === ADMIN_PASSCODE) {
-    return res.json({
-      success: true,
-      message: 'Login successful',
-      token: ADMIN_TOKEN
-    });
+    return res.json({ success: true, message: 'Login successful', token: ADMIN_TOKEN });
   }
-  return res.status(401).json({
-    success: false,
-    message: 'ভুল এডমিন পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিন।'
-  });
+  return res.status(401).json({ success: false, message: 'ভুল এডমিন পাসওয়ার্ড!' });
+});
+
+// API: Public Products List
+app.get('/api/products', (req, res) => {
+  const products = getProducts();
+  res.json({ success: true, count: products.length, products });
+});
+
+// API: Add Product (Protected)
+app.post('/api/products', requireAdminAuth, (req, res) => {
+  const { title, titleBn, category, price, oldPrice, discount, tag, image, tab } = req.body;
+  if (!title || !price) {
+    return res.status(400).json({ success: false, message: 'Title and Price are required.' });
+  }
+
+  const products = getProducts();
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const id = `${slug}-${Date.now().toString().slice(-4)}`;
+
+  const newProduct = {
+    id,
+    title,
+    titleBn: titleBn || title,
+    category: category || 'phone',
+    price: Number(price),
+    oldPrice: oldPrice ? Number(oldPrice) : Number(price) + 100,
+    discount: discount || '',
+    savings: oldPrice ? Number(oldPrice) - Number(price) : 100,
+    tag: tag || 'New',
+    image: image || 'assets/phone_stand_speaker.jpg',
+    tab: tab || 'available'
+  };
+
+  products.unshift(newProduct);
+  saveProducts(products);
+
+  res.status(201).json({ success: true, message: 'Product added successfully', product: newProduct });
+});
+
+// API: Delete Product (Protected)
+app.delete('/api/products/:id', requireAdminAuth, (req, res) => {
+  const { id } = req.params;
+  let products = getProducts();
+  const filtered = products.filter(p => p.id !== id);
+
+  if (filtered.length === products.length) {
+    return res.status(404).json({ success: false, message: 'Product not found.' });
+  }
+
+  saveProducts(filtered);
+  res.json({ success: true, message: 'Product deleted successfully.' });
 });
 
 // API: Public Order Tracking
@@ -84,12 +155,12 @@ app.get('/api/orders/track', (req, res) => {
     return res.status(404).json({ success: false, message: 'কোনো অর্ডার পাওয়া যায়নি! সঠিক অর্ডার আইডি বা মোবাইল নম্বর দিন।' });
   }
 
-  // Return public tracking info without sensitive admin info
   const tracked = foundOrders.map(o => ({
     id: o.id,
     customerName: o.customerName,
     productTitle: o.productTitle,
     totalPrice: o.totalPrice,
+    paymentMethod: o.paymentMethod || 'COD',
     status: o.status,
     createdAt: o.createdAt
   }));
@@ -119,9 +190,25 @@ app.get('/api/orders', requireAdminAuth, (req, res) => {
   res.json({ success: true, count: orders.length, orders });
 });
 
-// API: Create new COD order (Public)
+// API: Export Orders CSV for Courier (Protected)
+app.get('/api/admin/export-csv', requireAdminAuth, (req, res) => {
+  const orders = getOrders();
+  let csv = 'Tracking ID,Customer Name,Customer Phone,Address,Delivery Area,Product Title,Product Price,Delivery Fee,Total Price,Payment Method,TrxID,Status,Order Date\n';
+
+  orders.forEach(o => {
+    const cleanAddress = `"${(o.customerAddress || '').replace(/"/g, '""')}"`;
+    const cleanTitle = `"${(o.productTitle || '').replace(/"/g, '""')}"`;
+    csv += `${o.id},"${o.customerName}",${o.customerPhone},${cleanAddress},${o.deliveryLocation || 'inside'},${cleanTitle},${o.productPrice},${o.deliveryFee},${o.totalPrice},${o.paymentMethod || 'COD'},"${o.trxId || ''}",${o.status},${o.createdAt}\n`;
+  });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="mati_store_orders.csv"');
+  res.status(200).send(csv);
+});
+
+// API: Create new order (Public)
 app.post('/api/orders', (req, res) => {
-  const { customerName, customerPhone, customerAddress, deliveryLocation, productId, productTitle, productPrice } = req.body;
+  const { customerName, customerPhone, customerAddress, deliveryLocation, productId, productTitle, productPrice, paymentMethod, trxId } = req.body;
 
   if (!customerName || !customerPhone || !customerAddress || !productPrice) {
     return res.status(400).json({ success: false, message: 'All fields are required' });
@@ -145,14 +232,16 @@ app.post('/api/orders', (req, res) => {
     productTitle: productTitle || 'Mati Store Gadget',
     productPrice: Number(productPrice),
     totalPrice,
+    paymentMethod: paymentMethod || 'COD',
+    trxId: trxId || '',
     status: 'Pending',
     createdAt: new Date().toISOString()
   };
 
-  orders.unshift(newOrder); // newest first
+  orders.unshift(newOrder);
   saveOrders(orders);
 
-  console.log(`[Order Created] ${orderId} by ${customerName} (${customerPhone}) - ৳${totalPrice}`);
+  sendSMSNotification(customerPhone, orderId, totalPrice);
 
   res.status(201).json({
     success: true,
@@ -209,4 +298,5 @@ app.get('/api/stats', requireAdminAuth, (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Mati Store Server running at http://localhost:${PORT}`);
 });
+
 

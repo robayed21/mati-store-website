@@ -55,19 +55,29 @@ const PRODUCTS = [
   }
 ];
 
-let currentSlideIndex = 0;
-let isSliderPlaying = true;
-let sliderInterval = null;
-let currentOrderProduct = null;
+let liveProducts = [...PRODUCTS];
 
 document.addEventListener('DOMContentLoaded', () => {
+  fetchLiveProducts();
   initHeroSlider();
-  renderProducts();
   initTabs();
   initModal();
   initMobileDrawer();
   initTrackModal();
 });
+
+async function fetchLiveProducts() {
+  try {
+    const res = await fetch('/api/products');
+    const data = await res.json();
+    if (data.success && data.products.length) {
+      liveProducts = data.products;
+    }
+  } catch (err) {
+    console.error('Error fetching live products, using fallback catalog:', err);
+  }
+  renderProducts();
+}
 
 /* Mobile Drawer Handlers */
 function initMobileDrawer() {
@@ -193,11 +203,11 @@ function renderProducts(filterTab = 'all') {
   const container = document.getElementById('productGrid');
   if (!container) return;
 
-  let filtered = PRODUCTS;
+  let filtered = liveProducts;
   if (filterTab === 'offer') {
-    filtered = PRODUCTS.filter(p => p.tab === 'offer');
+    filtered = liveProducts.filter(p => p.tab === 'offer' || p.discount);
   } else if (filterTab === 'new') {
-    filtered = PRODUCTS.filter(p => p.tab === 'new');
+    filtered = liveProducts.filter(p => p.tab === 'new' || p.tag === 'New');
   } else if (filterTab === 'coming') {
     filtered = [];
   }
@@ -282,8 +292,16 @@ function initModal() {
   }
 }
 
+function togglePayMethod() {
+  const selected = document.querySelector('input[name="payMethod"]:checked').value;
+  const box = document.getElementById('bkashInfoBox');
+  if (box) {
+    box.style.display = selected === 'bKash' ? 'block' : 'none';
+  }
+}
+
 function openOrderModal(productId) {
-  const product = PRODUCTS.find(p => p.id === productId);
+  const product = liveProducts.find(p => p.id === productId) || PRODUCTS.find(p => p.id === productId);
   if (!product) return;
 
   currentOrderProduct = product;
@@ -297,22 +315,13 @@ function openOrderModal(productId) {
   modalOverlay.classList.add('open');
 }
 
-function updatePriceSummary() {
-  if (!currentOrderProduct) return;
-  const locationSelect = document.getElementById('deliveryLocation');
-  const deliveryFee = locationSelect.value === 'outside' ? 120 : 60;
-  const total = currentOrderProduct.price + deliveryFee;
-
-  document.getElementById('summarySubtotal').innerText = `৳${currentOrderProduct.price.toLocaleString('bn-BD')}`;
-  document.getElementById('summaryDeliveryFee').innerText = `৳${deliveryFee.toLocaleString('bn-BD')}`;
-  document.getElementById('summaryTotal').innerText = `৳${total.toLocaleString('bn-BD')}`;
-}
-
 async function handleOrderSubmit() {
   const name = document.getElementById('customerName').value.trim();
   const phone = document.getElementById('customerPhone').value.trim();
   const address = document.getElementById('customerAddress').value.trim();
   const location = document.getElementById('deliveryLocation').value;
+  const payMethod = document.querySelector('input[name="payMethod"]:checked').value;
+  const trxId = document.getElementById('trxIdInput') ? document.getElementById('trxIdInput').value.trim() : '';
 
   if (!name || !phone || !address) {
     showToast('অনুগ্রহ করে সকল সঠিক তথ্য পূরণ করুন!');
@@ -333,7 +342,9 @@ async function handleOrderSubmit() {
     deliveryLocation: location,
     productId: currentOrderProduct.id,
     productTitle: currentOrderProduct.title,
-    productPrice: currentOrderProduct.price
+    productPrice: currentOrderProduct.price,
+    paymentMethod: payMethod,
+    trxId: trxId
   };
 
   try {
@@ -357,7 +368,7 @@ async function handleOrderSubmit() {
   } catch (err) {
     console.error('Order submission fallback:', err);
     document.getElementById('orderModal').classList.remove('open');
-    showToast(`ধন্যবাদ ${name}! আপনার ক্যাশ অন ডেলিভারি অর্ডারটি সফলভাবে জমা হয়েছে।`);
+    showToast(`ধন্যবাদ ${name}! আপনার অর্ডারটি সফলভাবে জমা হয়েছে।`);
     document.getElementById('orderForm').reset();
   }
 }
