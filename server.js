@@ -381,6 +381,47 @@ app.get('/api/stats', requireAdminAuth, (req, res) => {
   });
 });
 
+// API: AI Shopping Assistant (Larprouter)
+app.post('/api/ai/chat', async (req, res) => {
+  const { messages } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ success: false, message: 'Messages array is required.' });
+  }
+
+  const apiKey = process.env.LARPROUTER_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ success: false, message: 'AI service is not configured (LARPROUTER_API_KEY missing).' });
+  }
+
+  try {
+    const systemPrompt = {
+      role: 'system',
+      content: "You are Mati Store's AI Shopping Assistant. Mati Store is a popular e-commerce store in Bangladesh selling everyday gadgets like phone stands, bluetooth speakers, LED clocks, wireless microphones, and cordless screwdrivers with Cash on Delivery (COD). Answer customer queries in a helpful, polite, and friendly manner. Reply in Bengali if the customer writes in Bengali."
+    };
+
+    const response = await fetch('https://larprouter.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: process.env.LARPROUTER_MODEL || 'deepseek-v4.1-flash',
+        messages: [systemPrompt, ...messages]
+      })
+    });
+
+    const data = await response.json();
+    if (data.choices && data.choices[0]) {
+      return res.json({ success: true, reply: data.choices[0].message.content });
+    }
+    return res.status(500).json({ success: false, message: 'AI response failed' });
+  } catch (err) {
+    console.error('AI Chat Error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error during AI chat.' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Mati Store Server running at http://localhost:${PORT}`);
 });

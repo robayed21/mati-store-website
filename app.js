@@ -111,6 +111,69 @@ function initMobileDrawer() {
   }
 }
 
+/* AI Chat Assistant (Larprouter) */
+let aiChatOpen = false;
+const aiMessagesHistory = [];
+
+function toggleAiChat() {
+  aiChatOpen = !aiChatOpen;
+  const widget = document.getElementById('aiChatWidget');
+  if (widget) widget.style.display = aiChatOpen ? 'block' : 'none';
+  if (aiChatOpen) document.getElementById('aiChatInput')?.focus();
+}
+
+function escapeAiHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function sendAiMessage() {
+  const input = document.getElementById('aiChatInput');
+  const box = document.getElementById('aiChatMessages');
+  if (!input || !box) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  aiMessagesHistory.push({ role: 'user', content: text });
+  box.insertAdjacentHTML('beforeend', `<div style="background:#0d9488;color:white;padding:0.75rem;border-radius:12px;margin-left:auto;max-width:85%;">${escapeAiHtml(text)}</div>`);
+  input.value = '';
+  box.scrollTop = box.scrollHeight;
+
+  const loadingId = 'ai-loading-' + Date.now();
+  box.insertAdjacentHTML('beforeend', `<div id="${loadingId}" style="background:white;padding:0.75rem;border-radius:12px;border:1px solid var(--color-border);max-width:85%;color:#64748b;">টাইপিং...</div>`);
+  box.scrollTop = box.scrollHeight;
+
+  try {
+    const res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: aiMessagesHistory })
+    });
+    const data = await res.json();
+    document.getElementById(loadingId)?.remove();
+
+    if (data.success && data.reply) {
+      aiMessagesHistory.push({ role: 'assistant', content: data.reply });
+      box.insertAdjacentHTML('beforeend', `<div style="background:white;padding:0.75rem;border-radius:12px;border:1px solid var(--color-border);max-width:85%;white-space:pre-wrap;">${escapeAiHtml(data.reply)}</div>`);
+    } else {
+      box.insertAdjacentHTML('beforeend', `<div style="background:#fee2e2;color:#991b1b;padding:0.75rem;border-radius:12px;max-width:85%;">দুঃখিত, এআই সার্ভারে সংযোগ করা যাচ্ছে না।</div>`);
+    }
+  } catch (err) {
+    document.getElementById(loadingId)?.remove();
+    box.insertAdjacentHTML('beforeend', `<div style="background:#fee2e2;color:#991b1b;padding:0.75rem;border-radius:12px;max-width:85%;">নেটওয়ার্ক ত্রুটি ঘটেছে।</div>`);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const aiInput = document.getElementById('aiChatInput');
+  if (aiInput) {
+    aiInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendAiMessage();
+    });
+  }
+});
+
 /* Category Filter Handler */
 function filterByCategory(cat) {
   const container = document.getElementById('productGrid');
